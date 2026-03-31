@@ -20,24 +20,47 @@ const db = new Database(DB_FILE);
 // ----------------------------------------------------------------
 
 export function getAllDecks() {
-  // TODO: return all rows from the decks table
-  throw new Error('Not implemented');
+  return db.prepare(`SELECT * FROM decks`).all();
 }
 
 export function getDeckById(id) {
-  // TODO: return the deck row with the given id, or null if not found
-  throw new Error('Not implemented');
+  const getById = db
+    .prepare(`SELECT name, description FROM decks WHERE id = ? `)
+    .get(id);
+
+  if (!getById) {
+    return { name: null, description: null };
+  }
+
+  return getById;
 }
 
 export function addDeck(name, description) {
-  // TODO: insert a new deck and return the new row (including its id)
-  throw new Error('Not implemented');
+  const existedDecksInfo = getAllDecks();
+
+  const existing = existedDecksInfo.find(
+    (deck) => deck.name === name && deck.description === description
+  );
+
+  if (existing) {
+    return existing;
+  }
+
+  const result = db
+    .prepare(
+      `INSERT INTO decks (name, description) VALUES (@name, @description)`
+    )
+    .run({ name, description });
+
+  return db
+    .prepare(`SELECT id, name, description FROM decks  WHERE id = ?`)
+    .get(result.lastInsertRowid);
 }
 
 export function deleteDeck(deckId) {
-  // TODO: delete the deck with the given id
-  //       return true if a row was deleted, false otherwise
-  throw new Error('Not implemented');
+  const deck = db.prepare(`DELETE FROM decks WHERE id = ?`).run(deckId);
+
+  return deck.changes > 0 ? 'true' : 'false';
 }
 
 // ----------------------------------------------------------------
@@ -45,23 +68,47 @@ export function deleteDeck(deckId) {
 // ----------------------------------------------------------------
 
 export function getAllCardsForDeck(deckId) {
-  // TODO: return all card rows whose deckId matches
-  throw new Error('Not implemented');
+  return db
+    .prepare(`SELECT id, answer, question, learned FROM cards WHERE deck_id=?`)
+    .all(deckId);
 }
 
 export function addCard(question, answer, deckId) {
-  // TODO: insert a new card and return the new row (including its id)
-  throw new Error('Not implemented');
+  const existedCardsInfoForDeck = getAllCardsForDeck(deckId);
+
+  const existing = existedCardsInfoForDeck.find(
+    (card) => card.question === question && card.answer === answer
+  );
+
+  if (existing) {
+    return existing;
+  }
+
+  const result = db
+    .prepare(
+      `INSERT INTO cards (question, answer, deck_id) VALUES (@question, @answer, @deck_id)`
+    )
+    .run({ question, answer, deck_id: deckId });
+
+  return db
+    .prepare(`SELECT id, question FROM cards WHERE id = ?`)
+    .get(result.lastInsertRowid);
 }
 
 export function markCardLearned(cardId) {
-  // TODO: set learned = 1 for the card with the given id
-  //       return the updated row, or null if not found
-  throw new Error('Not implemented');
+  db.prepare(`UPDATE cards SET learned = 1 WHERE id=?`).run(cardId);
+
+  const card = db
+    .prepare(`SELECT id, learned FROM cards WHERE id = ?`)
+    .get(cardId);
+
+  return {
+    id: card.id,
+    learned: card.learned === 1 ? 'true' : 'false',
+  };
 }
 
 export function deleteCard(cardId) {
-  // TODO: delete the card with the given id
-  //       return true if a row was deleted, false otherwise
-  throw new Error('Not implemented');
+  const card = db.prepare(`DELETE FROM cards WHERE id=?`).run(cardId);
+  return card.changes > 0 ? 'true' : 'false';
 }
